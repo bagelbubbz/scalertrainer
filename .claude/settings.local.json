@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/vivian/Downloads/**)",
+      "Bash(printf \"No\\\\nNo\\\\n\")",
+      "Bash(npx create-next-app@latest guitar-scale-trainer --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --no-turbopack)",
+      "Bash(yes \"\")",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --no-turbopack)"
+    ]
+  }
+}
