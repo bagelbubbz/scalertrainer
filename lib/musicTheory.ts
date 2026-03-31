@@ -172,10 +172,10 @@ export function getDiatonicChords(rootIdx: number, scaleType: ScaleType): Diaton
 }
 
 // ─── Fret range helper ─────────────────────────────────────────────────────────
+// Only returns frets that have at least one note — keeps columns tight & readable
 export function getFretRange(pos: ScaleNote[][]): { min: number; max: number; frets: number[] } {
   const allFrets = pos.flat().map(p => p.fret);
   if (!allFrets.length) return { min: 0, max: 12, frets: Array.from({ length: 13 }, (_, i) => i) };
-  const min = Math.max(0, Math.min(...allFrets) - 1);
-  const max = Math.max(...allFrets) + 1;
-  return { min, max, frets: Array.from({ length: max - min + 1 }, (_, i) => min + i) };
+  const unique = [...new Set(allFrets)].sort((a, b) => a - b);
+  return { min: unique[0], max: unique[unique.length - 1], frets: unique };
 }

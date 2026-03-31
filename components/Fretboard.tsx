@@ -1,14 +1,14 @@
 'use client';
 import React from 'react';
 import {
-  ScaleNote, ScaleDef, STRING_LABELS, NOTES, OCTAVE_COLORS, LabelMode, getLabel,
+  ScaleNote, STRING_LABELS, OCTAVE_COLORS, LabelMode, getLabel,
 } from '@/lib/musicTheory';
 
 interface FretboardProps {
-  pos: ScaleNote[][];          // [string][noteIdx]
-  frets: number[];             // the windowed fret numbers to display
+  pos: ScaleNote[][];
+  frets: number[];
   activeNote?: ScaleNote | null;
-  doneSet?: Set<number>;       // set of absolute deg indices that are done
+  doneSet?: Set<number>;
   onNoteClick?: (n: ScaleNote) => void;
   labelMode?: LabelMode;
 }
@@ -17,25 +17,29 @@ const INLAY_FRETS = new Set([3, 5, 7, 9, 15]);
 const DOUBLE_FRETS = new Set([12]);
 
 export default function Fretboard({
-  pos,
-  frets,
-  activeNote,
-  doneSet = new Set(),
-  onNoteClick,
-  labelMode = 'solfege',
+  pos, frets, activeNote, doneSet = new Set(), onNoteClick, labelMode = 'solfege',
 }: FretboardProps) {
-  // Build lookup map: "si-fret" → ScaleNote
   const noteMap = new Map<string, ScaleNote>();
-  for (const string of pos) {
+  for (const string of pos)
     for (const n of string) noteMap.set(`${n.si}-${n.fret}`, n);
-  }
 
-  const cellH = 34;
-  const labelW = 44;
+  // Layout constants (logical SVG units — scale to any screen via viewBox)
+  const cellW  = 58;   // width per fret column
+  const cellH  = 46;   // height per string row
+  const labelW = 52;   // left label area
+  const topPad = 28;   // space for fret numbers
+  const botPad = 20;   // space for inlay dots
+  const dotR   = 14;   // note dot radius
+  const numStrings = 6;
 
+  const svgW = labelW + frets.length * cellW;
+  const svgH = topPad + numStrings * cellH + botPad;
+
+  const cx  = (fi: number) => labelW + fi * cellW + cellW / 2;
+  const sy  = (si: number) => topPad + si * cellH + cellH / 2;
   const getN = (si: number, f: number) => noteMap.get(`${si}-${f}`);
   const isActive = (n: ScaleNote) => activeNote?.si === n.si && activeNote?.fret === n.fret;
-  const isDone = (n: ScaleNote) => doneSet.has(n.deg);
+  const isDone   = (n: ScaleNote) => doneSet.has(n.deg);
 
   return (
     <div style={{
@@ -43,111 +47,157 @@ export default function Fretboard({
       border: '1px solid rgba(255,255,255,0.07)',
       background: 'rgba(6,8,16,0.9)',
       width: '100%',
+      overflow: 'hidden',
     }}>
-      <div style={{ width: '100%', padding: '16px 10px', boxSizing: 'border-box' }}>
+      <svg
+        viewBox={`0 0 ${svgW} ${svgH}`}
+        width="100%"
+        style={{ display: 'block' }}
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <linearGradient id="stringGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stopColor="#111120" />
+            <stop offset="50%"  stopColor="#28283a" />
+            <stop offset="100%" stopColor="#111120" />
+          </linearGradient>
+        </defs>
 
-        {/* Fret numbers */}
-        <div style={{ display: 'flex', paddingLeft: labelW, marginBottom: 6 }}>
-          {frets.map(f => (
-            <div key={f} style={{
-              flex: 1, textAlign: 'center', fontSize: 10, minWidth: 0,
-              color: INLAY_FRETS.has(f) || DOUBLE_FRETS.has(f) ? '#d4a574' : '#2a2a3a',
-              fontWeight: 800,
-            }}>
+        {/* ── Fret number labels ─────────────────────────────── */}
+        {frets.map((f, fi) => {
+          const isMarked = INLAY_FRETS.has(f) || DOUBLE_FRETS.has(f);
+          return (
+            <text key={f} x={cx(fi)} y={topPad - 9}
+              textAnchor="middle" fontSize={11} fontWeight={800}
+              fill={isMarked ? '#d4a574' : '#333'}>
               {f === 0 ? '○' : f}
-            </div>
-          ))}
-        </div>
+            </text>
+          );
+        })}
 
-        {/* Strings */}
-        {Array.from({ length: 6 }, (_, si) => (
-          <div key={si} style={{ display: 'flex', alignItems: 'center', marginBottom: 3 }}>
-            {/* String label */}
-            <div style={{
-              width: labelW, paddingRight: 8, textAlign: 'right', flexShrink: 0,
-              fontSize: 9, fontWeight: 700, color: '#555',
-            }}>
-              {STRING_LABELS[si]}
-            </div>
+        {/* ── Gap markers between non-adjacent frets ────────── */}
+        {frets.map((f, fi) => {
+          if (fi === 0) return null;
+          const gap = f - frets[fi - 1];
+          if (gap <= 1) return null;
+          // Draw a subtle dotted divider to show a skip
+          const x = labelW + fi * cellW;
+          return (
+            <g key={`gap-${fi}`}>
+              <line
+                x1={x} y1={topPad - 2}
+                x2={x} y2={topPad + numStrings * cellH + 2}
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth={1}
+                strokeDasharray="3 3"
+              />
+              <text x={x} y={topPad - 14}
+                textAnchor="middle" fontSize={8}
+                fill="rgba(255,255,255,0.15)">
+                +{gap - 1}
+              </text>
+            </g>
+          );
+        })}
 
-            {frets.map(f => {
-              const n = getN(si, f);
-              const act = n && isActive(n);
-              const dn = n && isDone(n);
-              const oc = n ? OCTAVE_COLORS[Math.min(n.oct, 2)] : null;
-              const thick = [3, 2.5, 2, 1.5, 1, 1][si];
+        {/* ── Full-height fret lines ─────────────────────────── */}
+        {frets.map((f, fi) => {
+          if (fi === 0) return null;
+          const gap = f - frets[fi - 1];
+          return (
+            <line key={`fretline-${f}`}
+              x1={cx(fi) - cellW / 2} y1={topPad}
+              x2={cx(fi) - cellW / 2} y2={topPad + numStrings * cellH}
+              stroke={gap > 1 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.08)'}
+              strokeWidth={gap > 1 ? 1 : 1.5}
+            />
+          );
+        })}
 
-              return (
-                <div
-                  key={f}
-                  style={{
-                    flex: 1, height: cellH, position: 'relative', minWidth: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: n && onNoteClick ? 'pointer' : 'default',
-                  }}
-                  onClick={() => n && onNoteClick?.(n)}
-                >
-                  {/* String line */}
-                  <div style={{
-                    position: 'absolute', top: '50%', left: 0, right: 0, height: thick,
-                    background: 'linear-gradient(90deg,#1a1a28,#252535,#1a1a28)',
-                    transform: 'translateY(-50%)', opacity: f === 0 ? 0 : 1,
-                  }} />
-                  {/* Fret line */}
-                  {f > (frets[0] ?? 0) && (
-                    <div style={{
-                      position: 'absolute', top: 3, bottom: 3, left: 0, width: 1,
-                      background: 'rgba(255,255,255,0.05)',
-                    }} />
-                  )}
+        {/* ── Nut at fret 0 ─────────────────────────────────── */}
+        {frets[0] === 0 && (
+          <rect
+            x={labelW} y={topPad}
+            width={5} height={numStrings * cellH}
+            fill="rgba(255,255,255,0.18)" rx={2}
+          />
+        )}
 
-                  {/* Note dot */}
-                  {n && oc && (
-                    <div
-                      style={{
-                        position: 'relative', zIndex: 3,
-                        width: 'min(26px, 90%)', height: 26, borderRadius: '50%',
-                        background: act
-                          ? `linear-gradient(135deg,${oc},${oc}cc)`
-                          : dn
-                          ? 'rgba(255,255,255,0.03)'
-                          : `${oc}12`,
-                        border: `2px solid ${act ? oc : dn ? 'rgba(255,255,255,0.07)' : `${oc}44`}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: n.sol === 'Sol' ? 6 : n.sol.length > 2 ? 7 : 9,
-                        fontWeight: 900,
-                        color: act ? '#0d0f1a' : dn ? '#222' : oc,
-                        transition: 'transform 0.1s',
-                        transform: act ? 'scale(1.35)' : 'scale(1)',
-                        boxShadow: act ? `0 0 16px ${oc}cc,0 0 5px ${oc}88` : 'none',
-                      }}
-                    >
-                      {getLabel(n, labelMode)}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+        {/* ── Strings + notes ───────────────────────────────── */}
+        {Array.from({ length: numStrings }, (_, si) => {
+          const y = sy(si);
+          const thick = [3, 2.5, 2, 1.5, 1, 0.8][si];
+          return (
+            <g key={si}>
+              {/* String label */}
+              <text x={labelW - 10} y={y + 4}
+                textAnchor="end" fontSize={10} fontWeight={700} fill="#444">
+                {STRING_LABELS[si]}
+              </text>
 
-        {/* Inlays */}
-        <div style={{ display: 'flex', paddingLeft: labelW, marginTop: 4 }}>
-          {frets.map(f => (
-            <div key={f} style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
-              {INLAY_FRETS.has(f) && (
-                <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', margin: '0 auto' }} />
-              )}
-              {DOUBLE_FRETS.has(f) && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 3 }}>
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.12)' }} />
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.12)' }} />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+              {/* String line */}
+              <line
+                x1={labelW} y1={y}
+                x2={labelW + frets.length * cellW} y2={y}
+                stroke="url(#stringGrad)" strokeWidth={thick}
+              />
+
+              {/* Notes */}
+              {frets.map((f, fi) => {
+                const n = getN(si, f);
+                if (!n) return null;
+                const act = isActive(n);
+                const dn  = isDone(n);
+                const oc  = OCTAVE_COLORS[Math.min(n.oct, 2)];
+                const lbl = getLabel(n, labelMode);
+                const fs  = lbl === 'Sol' ? 7 : lbl.length > 2 ? 8 : 10;
+                const x   = cx(fi);
+                return (
+                  <g key={`${si}-${f}`}
+                    style={{ cursor: onNoteClick ? 'pointer' : 'default' }}
+                    onClick={() => onNoteClick?.(n)}>
+                    {/* Glow ring when active */}
+                    {act && (
+                      <circle cx={x} cy={y} r={dotR + 5}
+                        fill={`${oc}28`} stroke={`${oc}55`} strokeWidth={1} />
+                    )}
+                    {/* Dot */}
+                    <circle cx={x} cy={y} r={dotR}
+                      fill={act ? oc : dn ? 'rgba(255,255,255,0.03)' : `${oc}16`}
+                      stroke={act ? oc : dn ? 'rgba(255,255,255,0.08)' : `${oc}55`}
+                      strokeWidth={act ? 2.5 : 1.5}
+                    />
+                    {/* Label */}
+                    <text cx={x} cy={y}
+                      x={x} y={y + fs * 0.38}
+                      textAnchor="middle" fontSize={fs} fontWeight={900}
+                      fill={act ? '#0d0f1a' : dn ? '#222' : oc}
+                      style={{ fontFamily: 'inherit', userSelect: 'none' }}>
+                      {lbl}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })}
+
+        {/* ── Inlay dots ────────────────────────────────────── */}
+        {frets.map((f, fi) => {
+          const x = cx(fi);
+          const y = topPad + numStrings * cellH + 11;
+          if (DOUBLE_FRETS.has(f)) return (
+            <g key={`inlay-${f}`}>
+              <circle cx={x - 6} cy={y} r={3} fill="rgba(255,255,255,0.13)" />
+              <circle cx={x + 6} cy={y} r={3} fill="rgba(255,255,255,0.13)" />
+            </g>
+          );
+          if (INLAY_FRETS.has(f)) return (
+            <circle key={`inlay-${f}`} cx={x} cy={y} r={3} fill="rgba(255,255,255,0.1)" />
+          );
+          return null;
+        })}
+      </svg>
     </div>
   );
 }
