@@ -75,41 +75,15 @@ export default function Fretboard({
           );
         })}
 
-        {/* ── Gap markers between non-adjacent frets ────────── */}
-        {frets.map((f, fi) => {
-          if (fi === 0) return null;
-          const gap = f - frets[fi - 1];
-          if (gap <= 1) return null;
-          // Draw a subtle dotted divider to show a skip
-          const x = labelW + fi * cellW;
-          return (
-            <g key={`gap-${fi}`}>
-              <line
-                x1={x} y1={topPad - 2}
-                x2={x} y2={topPad + numStrings * cellH + 2}
-                stroke="rgba(255,255,255,0.06)"
-                strokeWidth={1}
-                strokeDasharray="3 3"
-              />
-              <text x={x} y={topPad - 14}
-                textAnchor="middle" fontSize={8}
-                fill="rgba(255,255,255,0.15)">
-                +{gap - 1}
-              </text>
-            </g>
-          );
-        })}
-
         {/* ── Full-height fret lines ─────────────────────────── */}
         {frets.map((f, fi) => {
           if (fi === 0) return null;
-          const gap = f - frets[fi - 1];
           return (
             <line key={`fretline-${f}`}
               x1={cx(fi) - cellW / 2} y1={topPad}
               x2={cx(fi) - cellW / 2} y2={topPad + numStrings * cellH}
-              stroke={gap > 1 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.08)'}
-              strokeWidth={gap > 1 ? 1 : 1.5}
+              stroke="rgba(255,255,255,0.08)"
+              strokeWidth={1.5}
             />
           );
         })}
