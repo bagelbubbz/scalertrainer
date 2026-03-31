@@ -30,9 +30,8 @@ export default function Fretboard({
     for (const n of string) noteMap.set(`${n.si}-${n.fret}`, n);
   }
 
-  const cellW = 38;
   const cellH = 34;
-  const labelW = 52;
+  const labelW = 44;
 
   const getN = (si: number, f: number) => noteMap.get(`${si}-${f}`);
   const isActive = (n: ScaleNote) => activeNote?.si === n.si && activeNote?.fret === n.fret;
@@ -40,19 +39,18 @@ export default function Fretboard({
 
   return (
     <div style={{
-      overflowX: 'auto',
-      WebkitOverflowScrolling: 'touch' as any,
       borderRadius: 14,
       border: '1px solid rgba(255,255,255,0.07)',
       background: 'rgba(6,8,16,0.9)',
+      width: '100%',
     }}>
-      <div style={{ minWidth: Math.max(360, frets.length * cellW + labelW), padding: '16px 10px' }}>
+      <div style={{ width: '100%', padding: '16px 10px', boxSizing: 'border-box' }}>
 
         {/* Fret numbers */}
         <div style={{ display: 'flex', paddingLeft: labelW, marginBottom: 6 }}>
           {frets.map(f => (
             <div key={f} style={{
-              width: cellW, textAlign: 'center', fontSize: 10, flexShrink: 0,
+              flex: 1, textAlign: 'center', fontSize: 10, minWidth: 0,
               color: INLAY_FRETS.has(f) || DOUBLE_FRETS.has(f) ? '#d4a574' : '#2a2a3a',
               fontWeight: 800,
             }}>
@@ -67,7 +65,7 @@ export default function Fretboard({
             {/* String label */}
             <div style={{
               width: labelW, paddingRight: 8, textAlign: 'right', flexShrink: 0,
-              fontSize: 9, fontWeight: 700, color: '#333',
+              fontSize: 9, fontWeight: 700, color: '#555',
             }}>
               {STRING_LABELS[si]}
             </div>
@@ -83,9 +81,9 @@ export default function Fretboard({
                 <div
                   key={f}
                   style={{
-                    width: cellW, height: cellH, position: 'relative',
+                    flex: 1, height: cellH, position: 'relative', minWidth: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, cursor: n && onNoteClick ? 'pointer' : 'default',
+                    cursor: n && onNoteClick ? 'pointer' : 'default',
                   }}
                   onClick={() => n && onNoteClick?.(n)}
                 >
@@ -108,7 +106,7 @@ export default function Fretboard({
                     <div
                       style={{
                         position: 'relative', zIndex: 3,
-                        width: 26, height: 26, borderRadius: '50%',
+                        width: 'min(26px, 90%)', height: 26, borderRadius: '50%',
                         background: act
                           ? `linear-gradient(135deg,${oc},${oc}cc)`
                           : dn
@@ -136,7 +134,7 @@ export default function Fretboard({
         {/* Inlays */}
         <div style={{ display: 'flex', paddingLeft: labelW, marginTop: 4 }}>
           {frets.map(f => (
-            <div key={f} style={{ width: cellW, textAlign: 'center', flexShrink: 0 }}>
+            <div key={f} style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
               {INLAY_FRETS.has(f) && (
                 <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', margin: '0 auto' }} />
               )}
