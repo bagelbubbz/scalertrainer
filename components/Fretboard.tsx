@@ -69,7 +69,7 @@ export default function Fretboard({
           return (
             <text key={f} x={cx(fi)} y={topPad - 9}
               textAnchor="middle" fontSize={11} fontWeight={800}
-              fill={isMarked ? '#d4a574' : '#333'}>
+              fill={isMarked ? '#d4a574' : '#666'}>
               {f === 0 ? '○' : f}
             </text>
           );
